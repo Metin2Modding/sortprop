@@ -18,7 +18,7 @@ workspace "sortprop"
 
     files {
       "src/*.cpp",
-      "src/*.hpp"
+      "src/*.h"
     } includedirs {
       "vendor/fast_io/include",
       "vendor/xxHash"
