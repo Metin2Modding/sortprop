@@ -4,22 +4,17 @@
 
 #include <filesystem>
 #include <spdlog/sinks/basic_file_sink.h>
-
-#ifdef _DEBUG
 #include <spdlog/sinks/stdout_color_sinks.h>
-#endif
 
 /**
  * @brief Logger for system errors.
  */
 std::shared_ptr<spdlog::logger> sp;
 
-#ifdef _DEBUG
 /**
  * @brief Logger for console output (debug mode).
  */
 std::shared_ptr<spdlog::logger> console;
-#endif
 
 /*
  * Public methods
@@ -27,20 +22,14 @@ std::shared_ptr<spdlog::logger> console;
 void
 logger::do_init()
 {
-#ifndef _DEBUG
-  if (sp)
-#else
   if (sp || console)
-#endif
     return;
 
   sp = spdlog::basic_logger_mt("sp", get_text_file("sp"), true);
   sp->set_pattern("[%^%l%$] [%H:%M:%S.%e] %v");
 
-#ifdef _DEBUG
   console = spdlog::stdout_color_mt("console");
   console->set_pattern("[%^%l%$] [%H:%M:%S.%e] %v");
-#endif
 }
 
 /*
@@ -49,11 +38,7 @@ logger::do_init()
 bool
 logger::is_init()
 {
-#ifndef _DEBUG
-  return !(!sp);
-#else
   return !(!sp || !console);
-#endif
 }
 
 void
@@ -69,18 +54,14 @@ logger::do_write(bool info, std::string message)
     sp->error(runtime);
     sp->flush();
 
-#ifdef _DEBUG
     console->error(runtime);
     console->flush();
-#endif
   } else {
-#ifdef _DEBUG
     sp->info(runtime);
     sp->flush();
 
     console->info(runtime);
     console->flush();
-#endif
   }
 }
 
