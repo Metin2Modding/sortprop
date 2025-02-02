@@ -7,6 +7,8 @@ workspace "sortprop"
 
   flags {
     "MultiProcessorCompile"
+  } buildoptions {
+    "/utf-8"
   } configurations {
     "Debug",
     "Release"
@@ -18,9 +20,13 @@ workspace "sortprop"
 
     files {
       "src/*.cpp",
-      "src/*.h"
+      "src/*.h",
+
+      "vendor/xxHash/xxhash.c",
+      "vendor/xxHash/xxhash.h"
     } includedirs {
       "vendor/fast_io/include",
+      "vendor/spdlog/include",
       "vendor/xxHash"
     }
 
@@ -30,4 +36,4 @@ workspace "sortprop"
 
     filter "configurations:Release"
       optimize "On"
-	  linktimeoptimization "On"
+      linktimeoptimization "On"

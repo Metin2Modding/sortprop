@@ -11,49 +11,112 @@
  */
 
 #include "loader.h"
+#include "logger.h"
 
-#include <fast_io.h>
-#include <filesystem>
 #include <print>
 #include <regex>
+#include <fstream>
+#include <xxhash.h>
+#include <unordered_set>
+#include <fast_io_device.h>
+
+std::unordered_set<std::string> crc_container;
 
 void
-loader::initialize(bool area_data, std::string_view path_archive)
+loader::do_map(const fs::path& archive)
 {
-  namespace fs = std::filesystem;
+  logger::do_info("{} called", __FUNCTION__);
+  logger::do_info("{} preloading areadata files", __FUNCTION__);
 
-  if (area_data) {
-    for (auto& i : fs::recursive_directory_iterator(path_archive)) {
-      if (i.path().filename() != "areadata.txt") {
-        /*
-         * Filename may be PascalCase
-         * so we need to std::transform
-         */
-        continue;
-      }
+  auto find_match = std::smatch();
+  auto find_regex =
+    std::regex(R"(Start\s+Object\d+\s+[-\d.]+\s+[-\d.]+\s+[-\d.]+\s+(\d+)\s*)");
 
-      /*
-       * Map file and convert to std::string
-       */
-      auto file = fast_io::native_file_loader(i.path());
-      auto file_view = std::string(file.data());
+  for (auto& i : fs::recursive_directory_iterator(archive)) {
+    if (i.is_directory())
+      continue;
 
-      /*
-       * Create a regular expression to find object CRC
-       */
-      auto find_regex = std::regex(
-        R"(Start\s+Object\d+\s+[-\d.]+\s+[-\d.]+\s+[-\d.]+\s+(\d+)\s*)");
-      auto find_match = std::smatch();
-      auto find_start = file_view.cbegin();
+    auto path = i.path().string();
+    std::ranges::transform(path, path.begin(), tolower);
 
-      while (std::regex_search(
-        find_start, file_view.cend(), find_match, find_regex)) {
-        /*
-         * Found any match, great!
-         */
-        std::println("{} - {}", find_match[1].str(), i.path().string());
-        find_start = find_match.suffix().first;
+    if (!path.contains("areadata.txt"))
+      continue;
+
+    /*
+     * Map file and convert to std::string
+     */
+    auto file = fast_io::native_file_loader(i.path());
+    auto file_view = std::string(file.data());
+
+    /*
+     * Create a regular expression to find object CRC
+     */
+    auto find_start = file_view.cbegin();
+    auto find_stop = file_view.cend();
+
+    while (std::regex_search(find_start, find_stop, find_match, find_regex)) {
+      crc_container.emplace(find_match[1]);
+      find_start = find_match.suffix().first;
+    }
+  }
+}
+
+#define NEW_PROPERTY_ARCHIVE "sortprop\\output\\property\\"
+
+void
+loader::do_prp(const fs::path& archive)
+{
+  logger::do_info("{} called", __FUNCTION__);
+  logger::do_info("{} preloading property objects", __FUNCTION__);
+
+  auto match = std::smatch();
+  auto regex = std::regex(R"(YPRT\s*(\d+))");
+
+  for (auto& i : fs::recursive_directory_iterator(archive)) {
+    if (i.is_directory())
+      continue;
+
+    auto file = std::string(fast_io::native_file_loader(i.path()).data());
+
+    if (!std::regex_search(file, match, regex))
+      continue;
+
+    if (crc_container.contains(match[1])) {
+      auto path_regex =
+        std::regex(R"(d:/ymir work[^"]+)", std::regex_constants::icase);
+      auto path_match = std::smatch();
+      if (std::regex_search(file, path_match, path_regex)) {
+        auto zzz = path_match[0].str();
+        auto x = zzz.substr(3);
+        try {
+          auto aa = fast_io::native_file_loader("sortprop/input/" + x);
+          auto bb = aa.data();
+          auto hash_value = XXH32(bb, aa.size(), 0);
+          std::string updated_file = std::regex_replace(
+            file, std::regex(match[1].str()), std::to_string(hash_value));
+          auto filexx = fast_io::obuf_file(NEW_PROPERTY_ARCHIVE +
+                                           std::to_string(hash_value));
+          write(filexx, updated_file.begin(), updated_file.end());
+          filexx.close();
+        } catch (fast_io::error a) {
+          std::println("{}", x);
+        }
       }
     }
   }
+}
+
+void
+loader::do_init(const fs::path& map_archive, const fs::path& prp_archive)
+{
+  logger::do_info("{} called", __FUNCTION__);
+
+  if (!exists(map_archive) || !exists(prp_archive)) {
+    logger::do_error(
+      "{} - {} does not exist", __FUNCTION__, map_archive.string());
+    return;
+  }
+
+  do_map(map_archive);
+  do_prp(prp_archive);
 }

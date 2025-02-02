@@ -12,14 +12,14 @@
 
 #pragma once
 
-#include <string>
+#include <filesystem>
+namespace fs = std::filesystem;
 
 class loader
 {
+  void static do_prp(const fs::path& archive);
+  void static do_map(const fs::path& archive);
+
 public:
-  /**
-   * @param area_data
-   * @param path_archive
-   */
-  void static initialize(bool area_data, std::string_view path_archive);
+  void static do_init(const fs::path& map_archive, const fs::path& prp_archive);
 };
