@@ -1,2 +1,3 @@
-# sortprop
- Fast and automatic Property file sorter
+<p align="center">
+  <img src="sortprop.png">
+</p>
