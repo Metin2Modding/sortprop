@@ -206,4 +206,3 @@ loader::do_init(const fs::path& map_archive, const fs::path& prp_archive)
   do_map(map_archive);
   do_prp(prp_archive);
 }
- 
