@@ -121,7 +121,7 @@ loader::do_prp(const fs::path& archive)
           filexx.close();
           crc_container[match[1]] = std::to_string(hash_value);
         } catch (...) {
-          std::println("error, holy moly!");
+          std::println("Cannot find(?) {}", x);
         }
       }
 
@@ -143,7 +143,7 @@ loader::do_prp(const fs::path& archive)
           filexx.close();
           crc_container[match[1]] = std::to_string(hash_value);
         } catch (...) {
-          std::println("error, holy moly!");
+          std::println("Cannot find(?) {}", zzz);
         }
       }
     }
