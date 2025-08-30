@@ -15,7 +15,6 @@
 
 #include <fast_io_device.h>
 #include <fstream>
-#include <print>
 #include <regex>
 #include <unordered_set>
 #include <xxhash.h>
@@ -121,7 +120,7 @@ loader::do_prp(const fs::path& archive)
           filexx.close();
           crc_container[match[1]] = std::to_string(hash_value);
         } catch (...) {
-          std::println("Cannot find(?) {}", x);
+          logger::do_error("Cannot find(?) {}", x);
         }
       }
 
@@ -143,7 +142,7 @@ loader::do_prp(const fs::path& archive)
           filexx.close();
           crc_container[match[1]] = std::to_string(hash_value);
         } catch (...) {
-          std::println("Cannot find(?) {}", zzz);
+          logger::do_error("Cannot find(?) {}", zzz);
         }
       }
     }
