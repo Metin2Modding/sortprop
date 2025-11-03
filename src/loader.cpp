@@ -10,6 +10,13 @@
  * https://github.com/Metin2Modding/sortprop
  */
 
+#define USE_CRC32
+// #define USE_XXHASH
+
+#if defined(USE_CRC32) && defined(USE_XXHASH)
+#error "Cannot use both USE_CRC32 and USE_XXHASH"
+#endif
+
 #include "loader.h"
 #include "logger.h"
 
@@ -17,7 +24,14 @@
 #include <fstream>
 #include <regex>
 #include <unordered_set>
+
+#ifdef USE_CRC32
+#include "crc32.h"
+#endif
+
+#ifdef USE_XXHASH
 #include <xxhash.h>
+#endif
 
 std::unordered_map<std::string, std::string> crc_container;
 
@@ -111,7 +125,12 @@ loader::do_prp(const fs::path& archive)
         try {
           auto aa = fast_io::native_file_loader("sortprop/input/" + x);
           auto bb = aa.data();
-          auto hash_value = XXH32(bb, aa.size(), 0);
+          auto hash_value =
+#ifdef USE_XXHASH
+            XXH32(bb, aa.size(), 0);
+#elif defined(USE_CRC32)
+            GetCaseCRC32(bb, aa.size());
+#endif
           std::string updated_file = std::regex_replace(
             file, std::regex(match[1].str()), std::to_string(hash_value));
           auto filexx = fast_io::obuf_file(NEW_PROPERTY_ARCHIVE +
@@ -133,7 +152,12 @@ loader::do_prp(const fs::path& archive)
         try {
           auto aa = fast_io::native_file_loader("sortprop/input/" + zzz);
           auto bb = aa.data();
-          auto hash_value = XXH32(bb, aa.size(), 0);
+          auto hash_value =
+#ifdef USE_XXHASH
+            XXH32(bb, aa.size(), 0);
+#elif defined(USE_CRC32)
+            GetCaseCRC32(bb, aa.size());
+#endif
           std::string updated_file = std::regex_replace(
             file, std::regex(match[1].str()), std::to_string(hash_value));
           auto filexx = fast_io::obuf_file(NEW_PROPERTY_ARCHIVE +
