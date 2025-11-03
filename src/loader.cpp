@@ -63,7 +63,7 @@ loader::do_map(const fs::path& archive)
     auto file_view = std::string(file.data());
 
     /*
-     * Create a regular expression to find object CRC
+     * Create a regular expression to find object hash
      */
     auto find_start = file_view.cbegin();
     auto find_stop = file_view.cend();
