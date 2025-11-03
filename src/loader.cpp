@@ -33,7 +33,7 @@
 #include <xxhash.h>
 #endif
 
-std::unordered_map<std::string, std::string> crc_container;
+std::unordered_map<std::string, std::string> hash_container;
 
 void
 loader::do_map(const fs::path& archive)
@@ -69,7 +69,7 @@ loader::do_map(const fs::path& archive)
     auto find_stop = file_view.cend();
 
     while (std::regex_search(find_start, find_stop, find_match, find_regex)) {
-      crc_container.emplace(find_match[1], find_match[1]);
+      hash_container.emplace(find_match[1], find_match[1]);
       find_start = find_match.suffix().first;
     }
 
@@ -115,7 +115,7 @@ loader::do_prp(const fs::path& archive)
     if (!std::regex_search(file, match, regex))
       continue;
 
-    if (crc_container.contains(match[1])) {
+    if (hash_container.contains(match[1])) {
       auto path_regex =
         std::regex(R"(d:/ymir work[^"]+)", std::regex_constants::icase);
       auto path_match = std::smatch();
@@ -137,7 +137,7 @@ loader::do_prp(const fs::path& archive)
                                            std::to_string(hash_value));
           write(filexx, updated_file.begin(), updated_file.end());
           filexx.close();
-          crc_container[match[1]] = std::to_string(hash_value);
+          hash_container[match[1]] = std::to_string(hash_value);
         } catch (...) {
           logger::do_error("Cannot find(?) {}", x);
         }
@@ -164,7 +164,7 @@ loader::do_prp(const fs::path& archive)
                                            std::to_string(hash_value));
           write(filexx, updated_file.begin(), updated_file.end());
           filexx.close();
-          crc_container[match[1]] = std::to_string(hash_value);
+          hash_container[match[1]] = std::to_string(hash_value);
         } catch (...) {
           logger::do_error("Cannot find(?) {}", zzz);
         }
@@ -197,7 +197,7 @@ loader::do_prp(const fs::path& archive)
 
     auto file = std::string(fast_io::native_file_loader(i.path()).data());
 
-    for (auto& [fst, snd] : crc_container) {
+    for (auto& [fst, snd] : hash_container) {
       do_replace(file, "    " + fst, "    " + snd);
     }
 
