@@ -21,9 +21,8 @@ main()
   // logger
   logger::do_init();
 
-  // loader
-#define MAP_ARCHIVE "sortprop\\input\\map\\"
-#define PROPERTY_ARCHIVE "sortprop\\input\\property\\"
+  std::filesystem::path base = std::filesystem::current_path();
+  logger::do_info("Base path: {}", base.string());
 
-  loader::do_init(MAP_ARCHIVE, PROPERTY_ARCHIVE);
+  loader::do_init(base);
 }

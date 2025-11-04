@@ -17,9 +17,9 @@ namespace fs = std::filesystem;
 
 class loader
 {
-  void static do_prp(const fs::path& archive);
-  void static do_map(const fs::path& archive);
+  void static do_prp(const fs::path& base);
+  void static do_map(const fs::path& base);
 
 public:
-  void static do_init(const fs::path& map_archive, const fs::path& prp_archive);
+  void static do_init(const fs::path& base);
 };
