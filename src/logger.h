@@ -12,9 +12,6 @@
 
 // ReSharper disable All
 
-#ifndef LOGGER_H
-#define LOGGER_H
-
 #pragma once
 
 #include <spdlog/logger.h>
@@ -98,4 +95,3 @@ private:
    */
   static std::string get_text_file(std::string name);
 };
-#endif // LOGGER_H
