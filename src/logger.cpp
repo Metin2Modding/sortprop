@@ -42,7 +42,7 @@ logger::is_init()
 }
 
 void
-logger::do_write(bool info, std::string message)
+logger::do_write(int32_t type, std::string message)
 {
   if (!is_init())
     assert(is_init());
@@ -50,19 +50,25 @@ logger::do_write(bool info, std::string message)
   std::erase(message, '\n');
   auto runtime = fmt::runtime(message);
 
-  if (!info) {
-    sp->error(runtime);
-    sp->flush();
+  switch (type) {
+    case 0:
+      sp->info(runtime);
+      console->info(runtime);
+      break;
 
-    console->error(runtime);
-    console->flush();
-  } else {
-    sp->info(runtime);
-    sp->flush();
+    case 1:
+      sp->warn(runtime);
+      console->warn(runtime);
+      break;
 
-    console->info(runtime);
-    console->flush();
+    case 2:
+      sp->error(runtime);
+      console->error(runtime);
+      break;
   }
+
+  sp->flush();
+  console->flush();
 }
 
 std::string

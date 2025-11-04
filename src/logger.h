@@ -27,7 +27,19 @@ public:
   template<typename... T>
   static void do_info(std::string message, T&&... arguments)
   {
-    do_write(true,
+    do_write(0,
+             fmt::format(fmt::runtime(message), std::forward<T>(arguments)...));
+  }
+
+  /**
+   * @brief Logs an warning message.
+   * @param message The message format string.
+   * @param arguments Additional arguments for the format string.
+   */
+  template<typename... T>
+  static void do_warn(std::string message, T&&... arguments)
+  {
+    do_write(1,
              fmt::format(fmt::runtime(message), std::forward<T>(arguments)...));
   }
 
@@ -39,7 +51,7 @@ public:
   template<typename... T>
   static void do_error(std::string message, T&&... arguments)
   {
-    do_write(false,
+    do_write(2,
              fmt::format(fmt::runtime(message), std::forward<T>(arguments)...));
   }
 
@@ -62,7 +74,7 @@ private:
    * @param message The message format string.
    * @param arguments The formatted message string.
    */
-  static void do_write(bool info, std::string message);
+  static void do_write(int32_t info, std::string message);
 
   /**
    * @brief Generates a filename for a text file with the given name and the
