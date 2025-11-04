@@ -1,3 +1,15 @@
+/*
+ *                 _
+ *  ___  ___  _ __| |_ _ __  _ __ ___  _ __
+ * / __|/ _ \| '__| __| '_ \| '__/ _ \| '_ \
+ * \__ \ (_) | |  | |_| |_) | | | (_) | |_) |
+ * |___/\___/|_|   \__| .__/|_|  \___/| .__/
+ *                    |_|             |_|
+ *
+ * Fast and automatic Property files sorter
+ * https://github.com/Metin2Modding/sortprop
+ */
+
 // ReSharper disable All
 
 #ifndef LOGGER_H
