@@ -21,8 +21,6 @@ main()
   // logger
   logger::do_init();
 
-  std::filesystem::path base = std::filesystem::current_path();
-  logger::do_info("Base path: {}", base.string());
-
-  loader::do_init(base);
+  // loader
+  loader::do_init(std::filesystem::current_path());
 }

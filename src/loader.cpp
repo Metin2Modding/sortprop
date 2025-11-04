@@ -136,6 +136,9 @@ loader::do_prp(const fs::path& base)
   std::error_code ec;
   fs::create_directories(property_out_dir, ec);
 
+  std::regex type_regex("propertytype[ \t]*\"([^\"]+)\"",
+                        std::regex_constants::icase);
+
   for (auto& i : fs::recursive_directory_iterator(base)) {
     try {
       if (i.is_directory())
@@ -150,6 +153,17 @@ loader::do_prp(const fs::path& base)
       auto id = match[1].str();
       if (!hash_container.contains(id))
         continue;
+
+      std::smatch type_match;
+      std::string property_type = "unknown";
+      if (std::regex_search(file, type_match, type_regex)) {
+        property_type = type_match[1].str();
+        std::ranges::transform(property_type,
+                               property_type.begin(),
+                               [](unsigned char c) { return std::tolower(c); });
+      }
+      fs::path property_type_dir = property_out_dir / property_type;
+      fs::create_directories(property_type_dir, ec);
 
       auto path_regex =
         std::regex(R"(d:/ymir work[^"]+)", std::regex_constants::icase);
@@ -181,7 +195,7 @@ loader::do_prp(const fs::path& base)
 #endif
           std::string updated_file = std::regex_replace(
             file, std::regex(id), std::to_string(hash_value));
-          fs::path out_file = property_out_dir / std::to_string(hash_value);
+          fs::path out_file = property_type_dir / std::to_string(hash_value);
           try {
             auto filexx = fast_io::obuf_file(out_file.string());
             write(filexx, updated_file.begin(), updated_file.end());
@@ -201,7 +215,7 @@ loader::do_prp(const fs::path& base)
         std::regex(R"(sound/ambience/[^"]+)", std::regex_constants::icase);
       if (std::regex_search(file, path_match, path_regex2)) {
         auto zzz = path_match[0].str();
-        fs::path referenced = normalize_path(base / fs::path(zzz));
+        fs::path referenced = normalize_path(base / "sound" / fs::path(zzz));
         try {
           auto aa = fast_io::native_file_loader(referenced);
           auto bb = aa.data();
@@ -214,7 +228,7 @@ loader::do_prp(const fs::path& base)
 #endif
           std::string updated_file = std::regex_replace(
             file, std::regex(id), std::to_string(hash_value));
-          fs::path out_file = property_out_dir / std::to_string(hash_value);
+          fs::path out_file = property_type_dir / std::to_string(hash_value);
           try {
             auto filexx = fast_io::obuf_file(out_file.string());
             write(filexx, updated_file.begin(), updated_file.end());
