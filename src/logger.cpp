@@ -86,7 +86,7 @@ logger::do_write(int32_t type, std::string message)
 std::string
 logger::get_text_file(std::string name)
 {
-  return fmt::format("log/{}_{}.txt", name, get_current_time());
+  return fmt::format("../sortprop/.log/{}_{}.txt", name, get_current_time());
 }
 
 std::string
