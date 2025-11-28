@@ -41,17 +41,6 @@ utf8(const fs::path& p)
   return std::string(reinterpret_cast<const char*>(s.c_str()), s.size());
 }
 
-static fs::path
-make_relative_or_full(const fs::path& p, const fs::path& base)
-{
-  std::error_code ec;
-  fs::path rel = p.lexically_relative(base);
-  if (rel.empty() || rel.string().find("..") == 0) {
-    return p;
-  }
-  return rel;
-}
-
 inline fs::path
 normalize_path(const fs::path& p)
 {
@@ -98,10 +87,15 @@ loader::do_map(const fs::path& base)
         find_start = find_match.suffix().first;
       }
 
-      fs::path rel = make_relative_or_full(i.path().parent_path(), base);
-      fs::path target_dir = out_root / rel;
       std::error_code ec;
+      fs::path rel = fs::relative(i.path().parent_path(), base, ec);
+
+      if (ec)
+        rel = i.path().parent_path().filename();
+
+      fs::path target_dir = out_root / rel;
       fs::create_directories(target_dir, ec);
+
       if (ec) {
         logger::do_error(
           "Failed to create directory {} : {}", utf8(target_dir), ec.message());
