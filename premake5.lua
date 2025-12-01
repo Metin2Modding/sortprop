@@ -27,7 +27,9 @@ workspace "sortprop"
     } includedirs {
       "vendor/fast_io/include",
       "vendor/spdlog/include",
-      "vendor/xxHash"
+      "vendor/stringzilla",
+      "vendor/xxHash",
+      "vendor"
     }
 
     -- Filter settings

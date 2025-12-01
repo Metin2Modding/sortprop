@@ -1,13 +1,13 @@
 #include "utils.h"
 
 bool
-utils::find_YPRT_id(std::string_view sv, uint32_t& id_out)
+utils::find_YPRT_id(sz::string_view sv, uint32_t& id_out)
 {
   size_t pos = sv.find("YPRT");
-  if (pos == std::string_view::npos)
+  if (pos == sz::string_view::npos)
     return false;
   size_t line_end = sv.find('\n', pos);
-  if (line_end == std::string_view::npos)
+  if (line_end == sz::string_view::npos)
     return false;
   size_t id_start = line_end + 1;
   while (id_start < sv.size() && (sv[id_start] == ' ' || sv[id_start] == '\t' ||
@@ -28,12 +28,12 @@ utils::find_YPRT_id(std::string_view sv, uint32_t& id_out)
   }
 }
 
-std::string_view
-utils::find_property_type(std::string_view sv)
+sz::string_view
+utils::find_property_type(sz::string_view sv)
 {
   const char* key = "propertytype";
   size_t pos = sv.find(key);
-  if (pos == std::string_view::npos)
+  if (pos == sz::string_view::npos)
     return {};
   pos += strlen(key);
   while (pos < sv.size() && (sv[pos] == ' ' || sv[pos] == '\t'))
@@ -42,53 +42,53 @@ utils::find_property_type(std::string_view sv)
     return {};
   size_t start = ++pos;
   size_t end = sv.find('"', start);
-  if (end == std::string_view::npos)
+  if (end == sz::string_view::npos)
     return {};
   return sv.substr(start, end - start);
 }
 
-std::string_view
-utils::find_ymir_path(std::string_view sv)
+sz::string_view
+utils::find_ymir_path(sz::string_view sv)
 {
   const char* key = "d:/ymir work";
   size_t pos = sv.find(key);
-  if (pos == std::string_view::npos)
+  if (pos == sz::string_view::npos)
     return {};
   size_t start = pos;
   size_t end = sv.find('"', start);
-  if (end == std::string_view::npos)
+  if (end == sz::string_view::npos)
     end = sv.size();
   return sv.substr(start, end - start);
 }
 
-std::string_view
-utils::find_sound_path(std::string_view sv)
+sz::string_view
+utils::find_sound_path(sz::string_view sv)
 {
   const char* key = "sound/ambience/";
   size_t pos = sv.find(key);
-  if (pos == std::string_view::npos)
+  if (pos == sz::string_view::npos)
     return {};
   size_t start = pos;
   size_t end = sv.find('"', start);
-  if (end == std::string_view::npos)
+  if (end == sz::string_view::npos)
     end = sv.size();
   return sv.substr(start, end - start);
 }
 
 void
-utils::extract_areadata_ids(std::string_view sv,
+utils::extract_areadata_ids(sz::string_view sv,
                             std::unordered_map<uint32_t, uint32_t>& map)
 {
   size_t pos = 0;
   while (true) {
     pos = sv.find("Start Object", pos);
-    if (pos == std::string_view::npos)
+    if (pos == sz::string_view::npos)
       break;
     size_t line_end = sv.find('\n', pos);
-    if (line_end == std::string_view::npos)
+    if (line_end == sz::string_view::npos)
       line_end = sv.size();
     size_t last_space = sv.rfind(' ', line_end);
-    if (last_space != std::string_view::npos && last_space > pos) {
+    if (last_space != sz::string_view::npos && last_space > pos) {
       auto token = sv.substr(last_space + 1, line_end - (last_space + 1));
       try {
         uint32_t id = static_cast<uint32_t>(std::stoul(std::string(token)));
@@ -101,7 +101,7 @@ utils::extract_areadata_ids(std::string_view sv,
 }
 
 void
-utils::replace_id(std::string_view input,
+utils::replace_id(sz::string_view input,
                   uint32_t from,
                   uint32_t to,
                   std::string& out)
@@ -113,7 +113,7 @@ utils::replace_id(std::string_view input,
   size_t pos = 0;
   while (true) {
     size_t found = input.find(from_str, pos);
-    if (found == std::string_view::npos) {
+    if (found == sz::string_view::npos) {
       out.append(input.substr(pos));
       break;
     }
@@ -134,7 +134,7 @@ utils::replace_id(std::string_view input,
 
 void
 utils::replace_all_ids_in_file(
-  std::string_view sv,
+  sz::string_view sv,
   const std::unordered_map<uint32_t, uint32_t>& map,
   std::string& out)
 {

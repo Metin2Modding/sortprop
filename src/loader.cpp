@@ -33,6 +33,7 @@
 #endif
 
 #include "utils.h"
+#include <stringzilla/stringzilla.hpp>
 
 std::unordered_map<uint32_t, uint32_t> hash_container;
 
@@ -75,8 +76,8 @@ loader::do_map(const fs::path& base)
         continue;
 
       auto file = fast_io::native_file_loader(i.path());
-      std::string_view file_view((file.data()), file.size());
-      utils::extract_areadata_ids(file_view, ::hash_container);
+      sz::string_view file_view((file.data()), file.size());
+      utils::extract_areadata_ids(file_view, hash_container);
       std::error_code ec;
       fs::path rel = fs::relative(i.path().parent_path(), base, ec);
       if (ec)
@@ -119,7 +120,7 @@ loader::do_prp(const fs::path& base)
         continue;
 
       auto file_loader = fast_io::native_file_loader(i.path());
-      std::string_view file_view((file_loader.data()), file_loader.size());
+      sz::string_view file_view((file_loader.data()), file_loader.size());
 
       uint32_t id_val = 0;
       if (!utils::find_YPRT_id(file_view, id_val))
@@ -257,7 +258,7 @@ loader::do_prp(const fs::path& base)
       continue;
 
     auto loader_file = fast_io::native_file_loader(i.path());
-    std::string_view file_view((loader_file.data()), loader_file.size());
+    sz::string_view file_view((loader_file.data()), loader_file.size());
 
     std::string output;
     utils::replace_all_ids_in_file(file_view, hash_container, output);
