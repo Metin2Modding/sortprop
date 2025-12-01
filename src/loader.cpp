@@ -32,7 +32,7 @@
 #include <xxhash.h>
 #endif
 
-std::unordered_map<std::string, std::string> hash_container;
+std::unordered_map<uint32_t, int32_t> hash_container;
 
 inline std::string
 utf8(const fs::path& p)
@@ -83,7 +83,13 @@ loader::do_map(const fs::path& base)
       auto find_stop = file_view.cend();
 
       while (std::regex_search(find_start, find_stop, find_match, find_regex)) {
-        hash_container.emplace(find_match[1], find_match[1]);
+        try {
+          auto hash = static_cast<uint32_t>(std::stoul(find_match[1].str()));
+          hash_container.emplace(hash, hash);
+        } catch (...) {
+          logger::do_error("Something went wrong! File: {}", filename_lower);
+        }
+
         find_start = find_match.suffix().first;
       }
 
@@ -144,8 +150,15 @@ loader::do_prp(const fs::path& base)
       if (!std::regex_search(file, match, regex))
         continue;
 
-      auto id = match[1].str();
-      if (!hash_container.contains(id))
+      uint32_t id_val;
+      try {
+        id_val = static_cast<uint32_t>(std::stoul(match[1].str()));
+      } catch (...) {
+        logger::do_error("Something went wrong");
+        continue;
+      }
+
+      if (!hash_container.contains(id_val))
         continue;
 
       std::smatch type_match;
@@ -181,20 +194,26 @@ loader::do_prp(const fs::path& base)
           auto aa = fast_io::native_file_loader(referenced);
           auto bb = aa.data();
           auto size = aa.size();
-          auto hash_value =
+          auto hash_value_raw =
 #ifdef USE_XXHASH
             XXH32(bb, size, 0);
 #elif defined(USE_CRC32)
             GetCaseCRC32(bb, size);
 #endif
-          std::string updated_file = std::regex_replace(
-            file, std::regex(id), std::to_string(hash_value));
-          fs::path out_file = property_type_dir / std::to_string(hash_value);
+
+          uint32_t hash_value = static_cast<uint32_t>(hash_value_raw);
+          std::string id_str = std::to_string(id_val);
+          std::string hash_str = std::to_string(hash_value);
+
+          std::string updated_file =
+            std::regex_replace(file, std::regex(id_str), hash_str);
+
+          fs::path out_file = property_type_dir / hash_str;
           try {
             auto filexx = fast_io::obuf_file(out_file.string());
             write(filexx, updated_file.begin(), updated_file.end());
             filexx.close();
-            hash_container[id] = std::to_string(hash_value);
+            hash_container[id_val] = hash_value;
           } catch (...) {
             logger::do_error("Cannot write property file {}",
                              out_file.string());
@@ -214,20 +233,26 @@ loader::do_prp(const fs::path& base)
           auto aa = fast_io::native_file_loader(referenced);
           auto bb = aa.data();
           auto size = aa.size();
-          auto hash_value =
+          auto hash_value_raw =
 #ifdef USE_XXHASH
             XXH32(bb, size, 0);
 #elif defined(USE_CRC32)
             GetCaseCRC32(bb, size);
 #endif
-          std::string updated_file = std::regex_replace(
-            file, std::regex(id), std::to_string(hash_value));
-          fs::path out_file = property_type_dir / std::to_string(hash_value);
+
+          uint32_t hash_value = static_cast<uint32_t>(hash_value_raw);
+          std::string id_str = std::to_string(id_val);
+          std::string hash_str = std::to_string(hash_value);
+
+          std::string updated_file =
+            std::regex_replace(file, std::regex(id_str), hash_str);
+
+          fs::path out_file = property_type_dir / hash_str;
           try {
             auto filexx = fast_io::obuf_file(out_file.string());
             write(filexx, updated_file.begin(), updated_file.end());
             filexx.close();
-            hash_container[id] = std::to_string(hash_value);
+            hash_container[id_val] = hash_value;
           } catch (...) {
             logger::do_error("Cannot write property file {}",
                              out_file.string());
@@ -279,7 +304,9 @@ loader::do_prp(const fs::path& base)
     std::string file = std::string(loader_file.data(), loader_file.size());
 
     for (auto& [fst, snd] : hash_container) {
-      do_replace(file, "    " + fst, "    " + snd);
+      std::string from = "    " + std::to_string(fst);
+      std::string to = "    " + std::to_string(snd);
+      do_replace(file, from, to);
     }
 
     try {

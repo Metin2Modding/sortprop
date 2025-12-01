@@ -18,7 +18,6 @@
 int
 main()
 {
-  // std
   std::println(R"(                _                         )");
   std::println(R"( ___  ___  _ __| |_ _ __  _ __ ___  _ __  )");
   std::println(R"(/ __|/ _ \| '__| __| '_ \| '__/ _ \| '_ \ )");
@@ -30,9 +29,6 @@ main()
   std::println(R"(https://github.com/Metin2Modding/sortprop )");
   std::println(R"(                                          )");
 
-  // logger
   logger::do_init();
-
-  // loader
   loader::do_init(std::filesystem::current_path());
 }
