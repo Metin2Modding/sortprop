@@ -32,7 +32,9 @@
 #include <xxhash.h>
 #endif
 
-std::unordered_map<uint32_t, int32_t> hash_container;
+#include "utils.h"
+
+std::unordered_map<uint32_t, uint32_t> hash_container;
 
 inline std::string
 utf8(const fs::path& p)
@@ -55,12 +57,8 @@ loader::do_map(const fs::path& base)
   logger::do_info("{} called", __FUNCTION__);
   logger::do_info("{} preloading areadata files", __FUNCTION__);
 
-  auto find_match = std::smatch();
-  auto find_regex =
-    std::regex(R"(Start\s+Object\d+\s+[-\d.]+\s+[-\d.]+\s+[-\d.]+\s+(\d+)\s*)",
-               std::regex_constants::icase);
-
   fs::path out_root = base.parent_path() / "sortprop";
+
   for (auto& i : fs::recursive_directory_iterator(base)) {
     try {
       if (i.is_directory())
@@ -77,37 +75,19 @@ loader::do_map(const fs::path& base)
         continue;
 
       auto file = fast_io::native_file_loader(i.path());
-      auto file_view = std::string(file.data(), file.size());
-
-      auto find_start = file_view.cbegin();
-      auto find_stop = file_view.cend();
-
-      while (std::regex_search(find_start, find_stop, find_match, find_regex)) {
-        try {
-          auto hash = static_cast<uint32_t>(std::stoul(find_match[1].str()));
-          hash_container.emplace(hash, hash);
-        } catch (...) {
-          logger::do_error("Something went wrong! File: {}", filename_lower);
-        }
-
-        find_start = find_match.suffix().first;
-      }
-
+      std::string_view file_view((file.data()), file.size());
+      utils::extract_areadata_ids(file_view, ::hash_container);
       std::error_code ec;
       fs::path rel = fs::relative(i.path().parent_path(), base, ec);
-
       if (ec)
         rel = i.path().parent_path().filename();
-
       fs::path target_dir = out_root / rel;
       fs::create_directories(target_dir, ec);
-
       if (ec) {
         logger::do_error(
           "Failed to create directory {} : {}", utf8(target_dir), ec.message());
         continue;
       }
-
       fs::path target_file = target_dir / i.path().filename();
       try {
         auto filexx = fast_io::obuf_file(utf8(target_file));
@@ -128,16 +108,10 @@ loader::do_prp(const fs::path& base)
   logger::do_info("{} called", __FUNCTION__);
   logger::do_info("{} preloading property objects", __FUNCTION__);
 
-  auto match = std::smatch();
-  auto regex = std::regex(R"(YPRT\s*(\d+))", std::regex_constants::icase);
-
   fs::path out_root = base.parent_path() / "sortprop";
   fs::path property_out_dir = out_root / "property" / "property";
   std::error_code ec;
   fs::create_directories(property_out_dir, ec);
-
-  std::regex type_regex("propertytype[ \t]*\"([^\"]+)\"",
-                        std::regex_constants::icase);
 
   for (auto& i : fs::recursive_directory_iterator(base)) {
     try {
@@ -145,55 +119,58 @@ loader::do_prp(const fs::path& base)
         continue;
 
       auto file_loader = fast_io::native_file_loader(i.path());
-      auto file = std::string(file_loader.data(), file_loader.size());
+      std::string_view file_view((file_loader.data()), file_loader.size());
 
-      if (!std::regex_search(file, match, regex))
+      uint32_t id_val = 0;
+      if (!utils::find_YPRT_id(file_view, id_val))
         continue;
-
-      uint32_t id_val;
-      try {
-        id_val = static_cast<uint32_t>(std::stoul(match[1].str()));
-      } catch (...) {
-        logger::do_error("Something went wrong");
-        continue;
-      }
 
       if (!hash_container.contains(id_val))
-        continue;
+        hash_container[id_val] = id_val;
 
-      std::smatch type_match;
-      std::string property_type = "unknown";
-      if (std::regex_search(file, type_match, type_regex)) {
-        property_type = type_match[1].str();
-        std::ranges::transform(property_type,
-                               property_type.begin(),
-                               [](unsigned char c) { return std::tolower(c); });
-      }
+      auto type_sv = utils::find_property_type(file_view);
+      std::string property_type =
+        type_sv.empty() ? "unknown" : std::string(type_sv);
+
+      std::ranges::transform(property_type.begin(),
+                             property_type.end(),
+                             property_type.begin(),
+                             [](unsigned char c) { return std::tolower(c); });
+
       fs::path property_type_dir = property_out_dir / property_type;
       fs::create_directories(property_type_dir, ec);
 
-      auto path_regex =
-        std::regex(R"(d:/ymir work[^"]+)", std::regex_constants::icase);
-      auto path_match = std::smatch();
-      if (std::regex_search(file, path_match, path_regex)) {
-        auto zzz = path_match[0].str();
-        auto x = zzz.substr(3);
+      auto ymir_sv = utils::find_ymir_path(file_view);
+      if (!ymir_sv.empty()) {
+        std::string x = std::string(ymir_sv);
+        x = x.substr(3);
         const std::string prefix = "ymir work/";
         auto pos = x.find(prefix);
         if (pos != std::string::npos)
           x.erase(pos, prefix.length());
-        x.erase(0, x.find_first_not_of(" \t\r\n"));
-        x.erase(x.find_last_not_of(" \t\r\n") + 1);
+
+        // trim left
+        while (!x.empty() &&
+               std::isspace(static_cast<unsigned char>(x.front())))
+          x.erase(x.begin());
+
+        // trim right
+        while (!x.empty() && std::isspace(static_cast<unsigned char>(x.back())))
+          x.pop_back();
+
         auto slash_pos = x.find('/');
         if (slash_pos != std::string::npos) {
           std::string first_segment = x.substr(0, slash_pos);
           x.insert(slash_pos + 1, "ymir work/" + first_segment + "/");
         }
+
         fs::path referenced = normalize_path(base / fs::path(x));
+
         try {
           auto aa = fast_io::native_file_loader(referenced);
           auto bb = aa.data();
           auto size = aa.size();
+
           auto hash_value_raw =
 #ifdef USE_XXHASH
             XXH32(bb, size, 0);
@@ -202,13 +179,10 @@ loader::do_prp(const fs::path& base)
 #endif
 
           uint32_t hash_value = static_cast<uint32_t>(hash_value_raw);
-          std::string id_str = std::to_string(id_val);
-          std::string hash_str = std::to_string(hash_value);
+          std::string updated_file;
+          utils::replace_id(file_view, id_val, hash_value, updated_file);
+          fs::path out_file = property_type_dir / std::to_string(hash_value);
 
-          std::string updated_file =
-            std::regex_replace(file, std::regex(id_str), hash_str);
-
-          fs::path out_file = property_type_dir / hash_str;
           try {
             auto filexx = fast_io::obuf_file(out_file.string());
             write(filexx, updated_file.begin(), updated_file.end());
@@ -224,15 +198,16 @@ loader::do_prp(const fs::path& base)
         }
       }
 
-      auto path_regex2 =
-        std::regex(R"(sound/ambience/[^"]+)", std::regex_constants::icase);
-      if (std::regex_search(file, path_match, path_regex2)) {
-        auto zzz = path_match[0].str();
-        fs::path referenced = normalize_path(base / "sound" / fs::path(zzz));
+      auto sound_sv = utils::find_sound_path(file_view);
+      if (!sound_sv.empty()) {
+        fs::path referenced =
+          normalize_path(base / "sound" / fs::path(std::string(sound_sv)));
+
         try {
           auto aa = fast_io::native_file_loader(referenced);
           auto bb = aa.data();
           auto size = aa.size();
+
           auto hash_value_raw =
 #ifdef USE_XXHASH
             XXH32(bb, size, 0);
@@ -241,13 +216,12 @@ loader::do_prp(const fs::path& base)
 #endif
 
           uint32_t hash_value = static_cast<uint32_t>(hash_value_raw);
-          std::string id_str = std::to_string(id_val);
-          std::string hash_str = std::to_string(hash_value);
 
-          std::string updated_file =
-            std::regex_replace(file, std::regex(id_str), hash_str);
+          std::string updated_file;
+          utils::replace_id(file_view, id_val, hash_value, updated_file);
 
-          fs::path out_file = property_type_dir / hash_str;
+          fs::path out_file = property_type_dir / std::to_string(hash_value);
+
           try {
             auto filexx = fast_io::obuf_file(out_file.string());
             write(filexx, updated_file.begin(), updated_file.end());
@@ -267,32 +241,14 @@ loader::do_prp(const fs::path& base)
     }
   }
 
-  auto do_replace =
-    [](std::string& str, const std::string& from, const std::string& to) {
-      size_t start_pos = 0;
-      while ((start_pos = str.find(from, start_pos)) != std::string::npos) {
-        bool left_ok =
-          (start_pos == 0 ||
-           !std::isalnum(static_cast<unsigned char>(str[start_pos - 1])));
-        bool right_ok = (start_pos + from.length() == str.length() ||
-                         !std::isalnum(static_cast<unsigned char>(
-                           str[start_pos + from.length()])));
-        if (left_ok && right_ok) {
-          str.replace(start_pos, from.length(), to);
-          start_pos += to.length();
-        } else {
-          start_pos += from.length();
-        }
-      }
-    };
-
   for (auto& i : fs::recursive_directory_iterator(out_root)) {
     if (i.is_directory())
       continue;
 
     std::string filename = i.path().filename().string();
     std::string filename_lower = filename;
-    std::ranges::transform(filename_lower,
+    std::ranges::transform(filename_lower.begin(),
+                           filename_lower.end(),
                            filename_lower.begin(),
                            [](unsigned char c) { return std::tolower(c); });
 
@@ -301,18 +257,15 @@ loader::do_prp(const fs::path& base)
       continue;
 
     auto loader_file = fast_io::native_file_loader(i.path());
-    std::string file = std::string(loader_file.data(), loader_file.size());
+    std::string_view file_view((loader_file.data()), loader_file.size());
 
-    for (auto& [fst, snd] : hash_container) {
-      std::string from = "    " + std::to_string(fst);
-      std::string to = "    " + std::to_string(snd);
-      do_replace(file, from, to);
-    }
+    std::string output;
+    utils::replace_all_ids_in_file(file_view, hash_container, output);
 
     try {
       fs::remove(i.path());
       auto filexx = fast_io::obuf_file(i.path().string());
-      write(filexx, file.begin(), file.end());
+      write(filexx, output.begin(), output.end());
       filexx.close();
     } catch (...) {
       logger::do_error("Cannot write replaced file {}", i.path().string());
